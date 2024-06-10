@@ -1,0 +1,67 @@
+---
+title: "CFDB Simple Rating System Ranking Plot"
+author: "Ryan Neudorff"
+date: "2024-6-10"
+output: rmarkdown::github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, eval = FALSE)
+```
+
+### SRS Visualization
+
+I created this project after I viewed [Andrew Weathermans's](https://viz.aweatherman.com/viz/) site and wanted to jump into data visualization, which was something that I haven't done before on R. And one of the first projects that I wanted to do was creating a visualization using the `gt` package. The data for this projects comes from the Talking Tech series on the College Football Databases Blog site. I followed the tutorial for building a Simple rating system in python [here](https://blog.collegefootballdata.com/talking-tech-bu/). And the code for this project can be found [here](https://github.com/ryan-neudorff/Resume/blob/main/SRS%20Project/SRS.viz.py).
+
+### Loading in our data
+
+Before we load in our data, we need to first load in the packages that we are going to use
+
+```{r, eval=TRUE}
+library(readr)
+library(tidyverse)
+library(gtExtras)
+library(gt)
+library(cfbfastR)
+```
+
+now we are ready to load in our data
+
+```{r}
+rankings <- read_csv("C:/Users/ryann/Downloads/SRS_rankings.csv")
+rankings$rank <- 1:nrow(rankings)
+```
+
+now for the next few lines of code we need to import team logos for the graphic and merge them with our `rankings` data set. Then since we want just the top 25, we will use `slice` to get only the top 25 teams for the 2023 season
+
+```{r}
+team <- cfbfastR::cfbd_team_info(year = 2023) %>% dplyr::select(school,logo)
+team <- team %>% rename(team = school)
+
+rankings <- rankings %>% left_join(.,team, by = "team")
+
+rank <- rankings %>% slice(1:25) %>%select(rank, logo, team, rating)
+rankings <- rankings%>%select(rank, logo, team, rating)
+
+```
+
+Now we are ready to build the graphs using the `gt` package
+
+```{r}
+g1 <- rank %>% gt() %>% gt_theme_538() %>% tab_header(title = md("**SRS Top 25**"), subtitle = 'Rankings as of Jan 8, 2024') %>%
+  gt::data_color(columns = rating, colors = c("darkred","white","darkgreen")) %>% cols_align(align = "center",columns = c(rank,rating)) %>%
+  tab_style(style = cell_text(weight = 'bold'), locations = cells_body(columns = c(rank,team,rating))) %>%
+  tab_style(style = cell_text(weight = 'bold'), locations = cells_column_labels()) %>%
+  fmt_number(columns = rating, decimals = 2) %>% gt_img_rows(columns = logo, img_source = "web", height = 25) %>%
+  tab_style(style = cell_borders(sides = c("bottom"),color = "white",weight = px(3),style="solid"),
+    locations = list(cells_body(columns = 1,rows = c(1:25)))) %>%
+  cols_label(rank = "Rk", team = "Team", rating = "SRS", logo = "") %>%
+  tab_source_note(md('Data by CFBD + cfbfastr <br> Viz. by Ryan Neudorff'))
+
+```
+
+The final results are shown here:
+
+```{r, echo=FALSE, eval=TRUE, out.width= "25%" , fig.align='center'}
+knitr::include_graphics("C:/Users/ryann/OneDrive/Documents/R Projects/gt.png")
+```
